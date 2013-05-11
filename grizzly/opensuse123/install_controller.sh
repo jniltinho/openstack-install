@@ -14,6 +14,8 @@ zypper refresh
 echo 'net.ipv4.conf.all.rp_filter = 0
 net.ipv4.conf.default.rp_filter = 0' >> /etc/sysctl.conf
 
+
+
 zypper in -y ntp openstack-dashboard patterns-OpenStack-controller
 zypper in -y memcached openstack-nova-novncproxy openstack-nova-vncproxy
 
@@ -48,14 +50,46 @@ FLUSH PRIVILEGES;
 EOF
 
 
+
+## OpenStack Identity Service
+cp /etc/keystone/keystone.conf /etc/keystone/keystone.conf.orig
+
+sed -i -e "s|sqlite:////var/lib/keystone/keystone.db|mysql://keystone:${MYSQL_PASSWD}@localhost/keystone|" /etc/keystone/keystone.conf
+sed -i -e "s|# admin_token = ADMIN|admin_token = ${MYSQL_PASSWD}|" /etc/keystone/keystone.conf
+sed -i -e "s|# debug = False|debug = True|" /etc/keystone/keystone.conf 
+
+rcopenstack-keystone restart
+keystone-manage db_sync
+
 echo 'export OS_TENANT_NAME=admin
 export OS_USERNAME=admin
 export OS_PASSWORD=openstack
 export OS_AUTH_URL="http://localhost:5000/v2.0/"
 export SERVICE_ENDPOINT="http://localhost:35357/v2.0"
-export SERVICE_TOKEN=openstack' > ~/openrc
+export SERVICE_TOKEN=openstack' >> ~/.bashrc
 
-echo "source ~/openrc" >> ~/.bashrc
+
+
+## OpenStack Image Service
+cp /etc/glance/glance-api.conf /etc/glance/glance-api.conf.orig
+sed -i -e "s|sqlite:///glance.sqlite|mysql://glance:${MYSQL_PASSWD}@localhost/glance|" /etc/glance/glance-api.conf
+sed -i -e "s|sqlite:////var/lib/glance/glance.db|mysql://glance:${MYSQL_PASSWD}@localhost/glance|" /etc/glance/glance-api.conf
+sed -i -e "s|%SERVICE_TENANT_NAME%|service|" /etc/glance/glance-api.conf
+sed -i -e "s|%SERVICE_USER%|glance|" /etc/glance/glance-api.conf
+sed -i -e "s|%SERVICE_PASSWORD%|${MYSQL_PASSWD}|" /etc/glance/glance-api.conf
+
+
+cp /etc/glance/glance-registry.conf /etc/glance/glance-registry.conf.orig
+sed -i -e "s|sqlite:///glance.sqlite|mysql://glance:${MYSQL_PASSWD}@localhost/glance|" /etc/glance/glance-registry.conf
+sed -i -e "s|sqlite:////var/lib/glance/glance.db|mysql://glance:${MYSQL_PASSWD}@localhost/glance|" /etc/glance/glance-registry.conf
+sed -i -e "s|%SERVICE_TENANT_NAME%|service|" /etc/glance/glance-registry.conf
+sed -i -e "s|%SERVICE_USER%|glance|" /etc/glance/glance-registry.conf
+sed -i -e "s|%SERVICE_PASSWORD%|${MYSQL_PASSWD}|" /etc/glance/glance-registry.conf
+
+
+rcopenstack-glance-api restart
+rcopenstack-glance-registry restart
+glance-manage db_sync
 
 
 a2enmod wsgi
