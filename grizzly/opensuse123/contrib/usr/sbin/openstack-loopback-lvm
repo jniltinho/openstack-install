@@ -1,0 +1,42 @@
+#!/bin/sh
+
+f=/var/lib/cinder/volumes
+loop=/dev/loop0
+modprobe loop
+
+if vgscan |grep -q cinder-volumes ; then
+  echo "using existing cinder-volumes VG"
+  vgchange -ay cinder-volumes
+  exit 0
+fi
+
+# stop/cleanup
+#vgremove cinder-volumes
+vgchange -an cinder-volumes
+#losetup -d $loop
+
+# cleanup old nova-volumes volume group
+if vgscan | grep -q nova-volumes ; then
+    echo "cleaning up old nova-volumes VG"
+    vgchange -an nova-volumes
+    vgremove nova-volumes
+    losetup -d $loop
+fi
+
+
+if ! test -e $f ; then
+	# calc wanted size
+	size=$(df -P -k /var/lib/cinder/|tail -1| perl -ne 'm/^\S+\s*\d+\s+\d+\s+(\d+)/; print int($1*0.3)')
+
+	if [ $size -le 2000000 ] ; then
+		echo "error detecting free space or FS too small: $size KB"
+		exit 12
+	fi
+
+	truncate --size=${size}K $f
+fi
+losetup $loop $f
+pvcreate $loop
+vgcreate cinder-volumes $loop
+
+vgchange -ay cinder-volumes

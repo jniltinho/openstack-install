@@ -1,0 +1,33 @@
+## Edit
+## /etc/openstackquickstartrc
+
+## Para gerar um demo
+openstack-quickstart-demosetup
+
+
+## Bridge
+echo "BOOTPROTO='static'
+BRIDGE='yes'
+BRIDGE_FORWARDDELAY='0'
+BRIDGE_PORTS='eth0'
+BRIDGE_STP='off'
+BROADCAST=''
+ETHTOOL_OPTIONS=''
+IPADDR='192.168.20.194/24'
+MTU=''
+NETMASK=''
+NETWORK=''
+REMOTE_IPADDR=''
+STARTMODE='onboot'
+USERCONTROL='no'" > /etc/sysconfig/network/ifcfg-br0
+
+## eth0
+echo "BOOTPROTO='static'
+BROADCAST=''
+ETHTOOL_OPTIONS=''
+IPADDR='0.0.0.0/32'
+MTU=''
+NETWORK=''
+REMOTE_IPADDR=''
+STARTMODE='onboot'
+USERCONTROL='no'" > /etc/sysconfig/network/ifcfg-eth0 
